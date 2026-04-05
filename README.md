@@ -1,5 +1,3 @@
-# SARFM: Symbolic Arabic Root Fingerprint Morphology
-
 # 📘 SARFM: Symbolic Arabic Root Fingerprint Morphology
 
 > **A deterministic, rule-based morphological engine for Classical Arabic.**  
@@ -11,41 +9,64 @@
 
 ---
 
-## 🌍 Overview
+## ⚖️ Design Philosophy: Structure Over Statistics
 
-**SARFM** (Symbolic Arabic Root Fingerprint Morphology) replaces statistical embeddings, corpus frequency bias, and probabilistic path selection with a **fully symbolic, mathematically transparent morphology pipeline**. 
+Modern NLP pipelines often rely on dense vector embeddings paired with cosine similarity, scaled through transformer architectures that improve predictably with more data. While effective for broad language modeling, this paradigm struggles with **Arabic morphological sciences** (علم الصرف، الاشتقاق، الأوزان، الإعلال). Statistical models treat morphological patterns as emergent properties of token co-occurrence, sacrificing rule enforcement, grammatical guarantee, and decision traceability.
 
-It maps Arabic roots to fixed 40-dimensional semantic fingerprints extracted from classical lexicons using a formal decomposition protocol. These fingerprints modulate Finite-State Transducer (FST) transition weights via deterministic dot products, enforce hard grammatical constraints through context/pattern routers, and guarantee identical outputs across runs. Designed for academic rigor, linguistic auditability, and production reliability.
+SARFM inverts this paradigm. Instead of learning implicit relations from massive corpora, it **encodes explicit morphological structure** as computational constraints. The system prioritizes:
+- **Rule density over parameter count:** Morphological validity is enforced through deterministic state transitions, not soft attention weights.
+- **Path exploration over gradient descent:** Multiple structurally valid derivations are evaluated via gated traversal, not collapsed into a single probabilistic distribution.
+- **Lexical provenance over latent space:** Every decision maps back to classical dictionary entries, pattern catalogs, and documented linguistic rules.
+- **Word-centric lightweight computation:** Analysis operates at the lexical unit level, avoiding heavy context windows, global relation matrices, or quadratic attention complexity.
 
----
-
-## ✨ Core Principles
-
-| Principle | Implementation |
-|-----------|----------------|
-| **Determinism** | Same input + same dataset version → identical output. No `softmax`, no sampling, no weight drift. |
-| **Lexicon-Grounded** | Fingerprints derived from classical dictionaries via a rule-based atomic lexicon protocol. |
-| **Encode/Decode Symmetry** | Identical vector space and FST graph serve both directions; only traversal order and I/O mapping change. |
-| **Hard Constraints** | Context tags & pattern matches route FST subgraphs deterministically. No fuzzy thresholds. |
-| **Full Traceability** | Every decision logs exact lexical provenance, activated dimensions, and routing rationale. |
+This architecture ensures that morphological analysis and generation remain **fully auditable, grammatically sound, and computationally lean**, regardless of dataset scale.
 
 ---
 
-## 🏗️ Architecture
+## 🧭 Architectural Path & Processing Flow
 
+SARFM processes each lexical unit through a **four-stage deterministic pipeline** that mirrors traditional Arabic morphological analysis while remaining computationally efficient.
+
+### 🔹 Stage 1: Lexical Categorization Gateway
+The pipeline begins with a hard structural classifier that attempts to resolve the word's primary lexical class:
+- **اسم (Noun)**: Identified by definitive markers (`الـ`, tanwīn, jar/preposition governance, nominal case endings).
+- **فعل (Verb)**: Identified by verbal markers (tāʾ al-fāʿil, yāʾ al-mukhāṭaba, nūn al-tawkīd, temporal prefixes).
+- **حرف (Particle)**: Matched against a closed lexical registry.
+
+If classification succeeds, the system routes directly to the corresponding morphological subgraph. If markers are ambiguous or absent, the word enters the token-level resolution pipeline.
+
+### 🔹 Stage 2: Token-Level Similarity Gating
+Ambiguous or unmarked forms are decomposed into sequential tokens: `[prefix] → [root radicals] → [internal vowels] → [suffix]`. Each token is encoded into a lightweight semantic vector and compared against the dataset registry via **step-wise cosine similarity**:
+- Similarity scores act as **deterministic routing signals**, not probabilistic confidences.
+- Thresholds are fixed and linguistically grounded (e.g., prefix alignment ≥ 0.75 routes to verbal conjugation paths).
+- Mismatches trigger structural fallbacks rather than soft redistribution.
+
+### 🔹 Stage 3: FST Structural Validation
+Tokens traverse a **Finite-State Transducer** where each state represents a morphological position (fadl, ʿayn, lām, vocalization slot, affix attachment). Transitions are governed by:
+- **Hard gates**: Invalid root-pattern combinations are pruned immediately.
+- **Step-wise weight application**: Semantic fingerprints modulate transition priorities incrementally, preventing global weight interference.
+- **Constraint propagation**: Vowel harmony, defectiveness (ʿilla), and gemination rules are enforced as state-level invariants.
+
+### 🔹 Stage 4: Dataset-Driven Relational Mapping
+Prefix-suffix relations and derivational pathways are resolved through **O(1) hash-table lookups** into the semantic index:
+- The dataset provides pre-computed fingerprint vectors, pattern catalogs, and context tags.
+- Cosine similarity between token vectors and registry entries determines relational alignment (e.g., suffix `ـونَ` → collective noun pathway).
+- All mappings are versioned and traceable; no latent interpolation or vector averaging occurs.
+
+### 🔄 Pipeline Summary
 ```
-[Input: Root / Intent] 
-   → Root Normalizer (canonicalization)
-   → Semantic Index (O(1) hash lookup)
-   → Fingerprint Retrieval (40-dim vector)
-   → Transition Mask Modulation (vector • mask)
-   → Context Router (pattern/tag → FST subgraph gating)
-   → Quality Controller (PARTIAL/MULTI_SENSE fallbacks)
-   → FST Traversal (weighted path selection)
-   → [Output: Surface Form / Semantic Vector] + Trace Log
+[Surface Form] 
+   → Lexical Categorization (اسم/فعل/حرف)
+   → [If Ambiguous] Token Decomposition & Step-wise Cosine Routing
+   → FST State Traversal (Hard Gates + Incremental Weight Modulation)
+   → Hash-Table Relational Lookup (Dataset-Driven Prefix/Suffix Mapping)
+   → [Output] Morphologically Valid Form + Full Decision Trace
 ```
 
-### 📦 Core Modules
+---
+
+## 🏗️ Core Modules
+
 | Module | Responsibility |
 |--------|----------------|
 | `RootNormalizer` | Deterministic canonicalization (strip tashkeel, unify alef/hamza, standardize weak finals) |
