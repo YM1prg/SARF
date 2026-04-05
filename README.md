@@ -24,8 +24,32 @@ This architecture ensures that morphological analysis and generation remain **fu
 ---
 
 ## 🧭 Architectural Path & Processing Flow
+Here is the complete architectural flow of SARFM rendered in Mermaid. It maps the deterministic pipeline, decision gates, FST validation, and dataset-driven relational mapping exactly as specified in the architecture path.
 
-SARFM processes each lexical unit through a **four-stage deterministic pipeline** that mirrors traditional Arabic morphological analysis while remaining computationally efficient.
+```mermaid
+graph TD
+    A[Input] --> B[Normalize Root]
+    B --> C{اسم / فعل / حرف?}
+    C -->|Yes| D[Direct Routing]
+    C -->|No| E[Token Decomposition]
+    E --> F[Vector Encoding]
+    F --> G[Cosine Similarity Check]
+    G --> H{Threshold Met?}
+    H -->|Yes| I[FST Traversal]
+    H -->|No| J[Fallback Path]
+    D --> I
+    J --> I
+    I --> K[Hard Gates]
+    K --> L[Weight Modulation]
+    L --> M[Constraint Propagation]
+    M --> N[Hash Lookup]
+    N --> O[Context Router]
+    O --> P[Quality Controller]
+    P --> Q[Relational Mapping]
+    Q --> R[Output Form]
+    R --> S[Decision Trace]
+```
+
 
 ### 🔹 Stage 1: Lexical Categorization Gateway
 The pipeline begins with a hard structural classifier that attempts to resolve the word's primary lexical class:
